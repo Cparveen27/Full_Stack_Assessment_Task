@@ -6,7 +6,6 @@ from flask_cors import CORS
 app = Flask(__name__)
 app.secret_key = "secret123"
 
-# Allow frontend to work without modification
 CORS(app, supports_credentials=True)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///database.db'
@@ -47,7 +46,7 @@ def auth_user():
 
 @app.route("/")
 def index():
-    return render_template("admin.html")
+    return render_template("admin.html")   # your actual file
 
 # ================= AUTH =================
 
@@ -125,32 +124,79 @@ def get_opportunities():
     return jsonify({"success": True, "data": result})
 
 
+# 🔥 CREATE + UPDATE + DELETE (NO FRONTEND CHANGE NEEDED)
 @app.route("/api/opportunities", methods=["POST"])
-def create_opportunity():
+def handle_opportunity():
     user_id = auth_user()
 
     if not user_id:
         return jsonify({"success": False})
 
     data = get_json()
+    action = data.get("action")
 
-    opp = Opportunity(
-        admin_id=user_id,
-        name=data.get("name"),
-        duration=data.get("duration"),
-        start_date=data.get("startDate"),
-        description=data.get("description"),
-        skills=",".join(data.get("skills", [])),
-        category=data.get("category"),
-        future=data.get("futureOpportunities"),
-        applicants=data.get("applicants")
-    )
+    # ================= CREATE =================
+    if not action:
+        opp = Opportunity(
+            admin_id=user_id,
+            name=data.get("name"),
+            duration=data.get("duration"),
+            start_date=data.get("startDate"),
+            description=data.get("description"),
+            skills=",".join(data.get("skills", [])) if isinstance(data.get("skills"), list) else data.get("skills"),
+            category=data.get("category"),
+            future=data.get("futureOpportunities"),
+            applicants=data.get("applicants")
+        )
 
-    db.session.add(opp)
-    db.session.commit()
+        db.session.add(opp)
+        db.session.commit()
 
-    return jsonify({"success": True})
+        return jsonify({"success": True})
 
+    # ================= UPDATE =================
+    if action == "update":
+        opp = Opportunity.query.get(data.get("id"))
+
+        if not opp or opp.admin_id != user_id:
+            return jsonify({"success": False})
+
+        if "name" in data:
+            opp.name = data.get("name")
+        if "duration" in data:
+            opp.duration = data.get("duration")
+        if "startDate" in data:
+            opp.start_date = data.get("startDate")
+        if "description" in data:
+            opp.description = data.get("description")
+        if "skills" in data:
+            opp.skills = ",".join(data.get("skills")) if isinstance(data.get("skills"), list) else data.get("skills")
+        if "category" in data:
+            opp.category = data.get("category")
+        if "futureOpportunities" in data:
+            opp.future = data.get("futureOpportunities")
+        if "applicants" in data:
+            opp.applicants = data.get("applicants")
+
+        db.session.commit()
+        return jsonify({"success": True})
+
+    # ================= DELETE =================
+    if action == "delete":
+        opp = Opportunity.query.get(data.get("id"))
+
+        if not opp or opp.admin_id != user_id:
+            return jsonify({"success": False})
+
+        db.session.delete(opp)
+        db.session.commit()
+
+        return jsonify({"success": True})
+
+    return jsonify({"success": False})
+
+
+# ================= OPTIONAL APIs (IF UI USES THEM) =================
 
 @app.route("/api/opportunities/<int:id>", methods=["PUT"])
 def update_opportunity(id):
@@ -163,14 +209,6 @@ def update_opportunity(id):
         return jsonify({"success": False})
 
     opp.name = data.get("name")
-    opp.duration = data.get("duration")
-    opp.start_date = data.get("startDate")
-    opp.description = data.get("description")
-    opp.skills = ",".join(data.get("skills", []))
-    opp.category = data.get("category")
-    opp.future = data.get("futureOpportunities")
-    opp.applicants = data.get("applicants")
-
     db.session.commit()
 
     return jsonify({"success": True})
@@ -197,7 +235,6 @@ if __name__ == "__main__":
     with app.app_context():
         db.create_all()
 
-        # create default user
         if not Admin.query.first():
             admin = Admin(
                 name="Admin",
