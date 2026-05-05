@@ -81,7 +81,7 @@ http://127.0.0.1:5000/
 ## 🔐 Default Login Credentials
 
 ```id="r2t8xy"
-Email: admin@example.com
+Email: admin@gmail.com
 Password: 12345678
 ```
 
