@@ -123,7 +123,7 @@ Password: 12345678
 
 ## 👨‍💻 Author
 
-Cparveen
-Backend developed using Flask as part of an assignment.
+C Parveen
+
 
 ---
